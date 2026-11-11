@@ -1,12 +1,14 @@
-# open-market-insights
+# Open Market Insights
 
-Free, modular Python collection of **Indian market data**, including an extensible IPO grey market premium (GMP) adapter, stock/index prices and financial news RSS metadata. MIT licensed.
+Free, modular Indian market data toolkit for personal education and research.
+Python 3.10–3.13 target • MIT code license • CSV/JSON exports • Offline tests
 
-> **IMPORTANT:** GMP is unofficial, unregulated, sometimes inaccurate, and not an exchange-provided price. This project is educational software, **not financial advice, investment research, or a trading recommendation**. Never rely on GMP alone to make an IPO decision. Yahoo Finance data may be delayed or revised. Respect each publisher's terms, robots.txt, copyright and licensing; public visibility does **not** automatically grant scraping or redistribution rights. The MIT license applies to this code, **not third-party data**.
+**This toolkit does not provide live GMP out of the box.** No reviewed GMP source
+has established permission for automated collection/reuse. Sources stay disabled
+rather than returning invented data. Yahoo historical prices are unofficial and
+may be delayed or revised. This project is not financial advice or an exchange feed.
 
 ## Install
-
-Python 3.10+ recommended.
 
 ```bash
 git clone https://github.com/yog1810/Open-Market-Insights.git
@@ -14,68 +16,157 @@ cd Open-Market-Insights
 python -m venv .venv
 # Linux/macOS:
 source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+# Windows PowerShell instead: .venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 python main.py --all
 ```
 
-Or run `python main.py` (same default). RSS collection is disabled by default until the user explicitly acknowledges the publisher terms. Results appear in `data/` as CSV and JSON. `data/` output is ignored by Git.
+No paid API keys or `.env` loader are required. Yahoo's terms govern personal use
+of retrieved prices. The MIT license does not license third-party data.
 
-## CLI
+## Commands
 
 ```bash
-python main.py --stocks --symbols RELIANCE.NS TCS.NS ^NSEI ^BSESN --period 1mo
-python main.py --news --acknowledge-rss-terms
+python main.py --all
 python main.py --gmp
+python main.py --stocks
+python main.py --news
+python main.py --ipo
+python main.py --all --verbose
+python main.py --gmp --source investorgain
 python main.py --gmp --gmp-config gmp_sources.example.json
-python main.py --all --output data --verbose --acknowledge-rss-terms
-python -m unittest discover -s tests -v
+python main.py --stocks --symbols RELIANCE.NS TCS.NS INFY.NS RELIANCE.BO ^NSEI ^BSESN --period 1mo
+python main.py --stocks --period 3mo --indicators --snapshot
+python main.py --news --acknowledge-rss-terms --source "Economic Times" --keywords IPO Nifty --limit 10
+python main.py --ipo --ipo-file authorized_ipo_metadata.csv
 ```
 
-Use `.NS` for NSE, `.BO` for BSE, `^NSEI` for Nifty 50, and `^BSESN` for Sensex. The stock provider is the unofficial `yfinance` client, not an exchange feed.
+No flag means `--all`. Categories are mutually exclusive; `--all` runs each in
+isolation. One collector failure does not stop the others. Exit code 1 means a
+collector/source failed or returned a partial result; 0 includes intentionally
+empty/disabled collectors. See `data/logs/run_summary.json` and stderr for details.
+An unknown `--source` fails explicitly. For GMP, this flag selects a configured
+provider; it does not override permissions. The default InvestorGain/IPOWatch
+entries are disabled; Chittorgarh has no verified listing adapter.
 
-## Source review (12 November 2026)
+RSS requires `--acknowledge-rss-terms` even at API level (`permission_reviewed=True`).
+Only ET is enabled after the runtime check; Mint's advertised feed returned 404 and is excluded from defaults. The flag grants
+no redistribution, hosting or commercial rights. Do not use this to populate a
+public news site. Business Standard/Moneycontrol are excluded from defaults.
 
-- IPOWatch public GMP page: https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/ — discovered, but automated access permission and HTML selectors are **not verified**.
-- Economic Times official RSS terms: https://economictimes.indiatimes.com/rss.cms — personal use only; aggregation/redistribution requires permission.
-- Mint official RSS terms: https://www.livemint.com/rss — personal, noncommercial newsreader use.
-- Business Standard RSS directory: https://www.business-standard.com/rss-feeds/listing — review terms and feed endpoints.
-- The RSS flag `--acknowledge-rss-terms` is an explicit opt-in for permitted personal use, **not** a license to redistribute publisher content.
-- No live network integration tests have been completed. Tests use synthetic fixtures.
+## What is implemented
 
-## GMP setup (manual verification required)
+- GMP adapters: explicit table/row/column mappings; permission evidence required;
+  configurable priority (config list order), fallback after errors, duplicate
+  detection and retained disagreements. No averages or fabricated missing values.
+- HTTP: descriptive User-Agent, HTTPS, fail-closed robots checks, per-host pacing,
+  Crawl-delay/Request-rate, timeout, bounded exponential retry and Retry-After.
+  Redirects require independent review; no automatic following. Retry-After over
+  60 seconds stops the run's source instead of retrying prematurely.
+- Stocks/indices: daily unadjusted OHLCV; missing/invalid price rejection, nullable
+  volume, UTC normalization, per-symbol errors, optional SMA20/SMA50/Wilder RSI14
+  and daily percentage change. Warm-up values are null. No real-time claims.
+- News: RSS/Atom metadata parsing, URL deduplication, source/keyword filtering,
+  IPO detection, UTC publication times; no full articles or descriptions exported.
+- IPO metadata: validated CSV/JSON import of lawfully obtained normalized records.
+  No NSE website scraper (terms prohibit it), no unverified BSE API.
+- Storage: consistent empty schemas, UTF-8, null JSON values, duplicate removal,
+  atomic replacement per file, optional UTC snapshots and run summaries.
 
-`--gmp` **does not return live GMP out of the box**. This is intentional: the two source definitions currently point to homepages, and generic HTML table selectors are illustrative only. The program skips those placeholders rather than creating misleading data.
+## Source status and licensing
 
-1. Check Chittorgarh.com and IPOWatch.in terms, robots.txt, and whether automated collection and your intended reuse are allowed. Obtain permission when needed. Do not evade paywalls, CAPTCHAs, access restrictions, or rate limits.
-2. Find a current, permitted public GMP listing URL on each website; update `SOURCES` in `scrapers/gmp_scraper.py`.
-3. Copy `gmp_sources.example.json`, replace its placeholder URL and selectors, and set `permission_reviewed` to `true` **only after confirming permission**. Run `python main.py --gmp --gmp-config your_sources.json`. The example remains disabled by default. Inspect the page's HTML manually, identify the correct table/row selectors and IPO name/GMP column indices, then update the `GMPSource` configuration. Check for JavaScript-only pages, changed columns, and units.
-4. Run `python main.py --gmp`, inspect `data/gmp.csv`, and compare every parsed value with the source. Do not publish scraped data until accuracy and redistribution rights are confirmed.
+See [source status table, review dates and primary evidence](docs/SOURCE_STATUS.md).
+See [executed tests and live verification results](docs/VALIDATION.md).
+A reachable page or robots Allow does not grant permission. Obtain written
+permission where required. Do not bypass CAPTCHAs, paywalls, authentication,
+Cloudflare, restrictions or rate limits. No SEBI/NSE/BSE affiliation is claimed.
 
-The collector checks robots.txt (fails closed when unavailable), uses a descriptive User-Agent, sleeps at least one second between configured sources, sets request timeouts and logs failures. Replace `set-your-email` in User-Agent with a real project contact before enabling scraping. Additional per-host crawl-delay and terms may require a longer interval; configure accordingly. `robots.txt` is **not** a substitute for site terms or permission.
+## Configuring an authorized GMP provider
 
-## RSS setup
+Copy `gmp_sources.example.json`; use only a permitted real listing page. Set
+`permission_reviewed: true` and `permission_reference` to documented permission,
+then map inspected selectors/columns. Example defaults are intentionally disabled.
+Do not turn on an adapter merely because a source is public. `expected_headers`
+contains the exact lower-case sequence of selected table headers for drift checking.
+Only map `issue_price_cell` when it means a confirmed single per-share issue price;
+price-band ranges are rejected. `updated_cell` remains raw without an invented year
+or timezone. Config order is priority; `--fallback-only` stops at the first valid
+source and cannot compare sources not fetched.
 
-`news_insights.py` includes *candidate* RSS feed URLs for Economic Times, Mint and Business Standard; availability, robots policy, and reuse rights are not guaranteed. Moneycontrol is intentionally left as a TODO until an approved current feed URL is confirmed. The aggregator stores only headlines, links, publication times and publisher attribution, not full articles. Verify the publisher's rules before redistribution. Invalid or blocked feeds are skipped with warnings.
+Normalized GMP fields:
 
-## Outputs
+```text
+ipo_name, ipo_slug, gmp_inr, raw_gmp, issue_price, estimated_listing_price,
+estimate_basis, gmp_percentage, source, source_url, source_updated_at,
+retrieved_at_utc, status, discrepancy
+```
 
-- `data/gmp.csv`, `data/gmp.json` — verified IPO names, GMP in INR, source and UTC retrieval timestamp; empty until configured.
-- `data/market_data.csv`, `data/market_data.json` — OHLCV history by ticker and date.
-- `data/news.csv`, `data/news.json` — deduplicated RSS metadata.
+`estimated_listing_price = issue_price + gmp_inr` is an unofficial calculation,
+not a prediction. It is null without an unambiguous positive issue price. Zero
+GMP is valid; missing, ranges and commentary are skipped/logged. All conflicting
+GMP observations remain present with `discrepancy=true`; comparisons are not a
+freshness guarantee. Names are candidate keys, not proof of company identity.
 
-CSV and JSON are overwritten on each run. Empty datasets produce empty files, not invented observations. To build a historical archive, add date-stamped output filenames or a database.
+The old `scrapers.gmp_scraper` imports remain supported. Direct collection now
+requires documented permissions too; this intentionally closes an unsafe API gap.
 
-## Extend the project
+## IPO import schema
 
-Each scraper exposes a `collect_*()` function returning a `pandas.DataFrame`. Add a new adapter in `scrapers/`, include clear source attribution and timestamps, implement timeouts/robots/terms checks for HTTP fetching, and register it in `main.py`. Keep selectors in source configuration, add tests with **synthetic** HTML/XML fixtures, and avoid committing third-party copyrighted datasets.
+Required fields: `ipo_name`, `exchange` (`NSE`, `BSE`, `NSE/BSE`), `source_url`.
+Optional fields: `open_date`, `close_date`, `listing_date` (YYYY-MM-DD),
+`price_band_low`, `price_band_high`, `lot_size`, `status`. Missing fields stay null.
+`ipo_slug` and UTC import timestamp are generated. The importer validates syntax
+and ranges, but does not authenticate the supplied provenance. It does not mark
+GMP as official or automatically join companies on fuzzy name matches.
 
-Contributions: fork, create a feature branch, run `python -m unittest discover -s tests -v`, open a PR describing source permissions, sample output schema and error behavior. Issues and corrections welcome. Do not submit credentials or copied full articles.
+## Output paths
 
-## Limitations and responsible use
+```text
+data/
+  gmp/gmp.csv                 gmp/gmp.json
+  ipo/ipo.csv                 ipo/ipo.json
+  stocks/stocks.csv           stocks/stocks.json
+  indices/indices.csv         indices/indices.json
+  news/news.csv               news/news.json
+  logs/run_summary.csv        logs/run_summary.json
+```
 
-This is a starter toolkit, not a production trading feed or a claim of working live GMP coverage. Source markup and RSS endpoints can change; financial providers can rate-limit or block requests. Verify all data independently. Use a sensible schedule, avoid aggressive parallelism, follow each site's terms and licensing, and obtain independent legal/compliance advice for commercial use or redistribution. No SEBI/NSE/BSE affiliation or endorsement is claimed.
+Legacy `data/gmp.*`, `data/news.*`, `data/market_data.*` remain available.
+Default files are replaced; `--snapshot` appends a UTC timestamp. Empty CSVs retain
+headers; empty JSON is `[]`. Atomic replacement is per file, not a transaction
+across the CSV/JSON pair or a concurrent-writer database. Generated data and logs
+are ignored by Git; never force-add them. Historical naive daily bars are treated
+as Asia/Kolkata midnight and converted to UTC; aware timestamps preserve the actual
+instant. Choose enough price history for indicator warm-up (50 bars for SMA50).
 
-## Test status
+## Development and verification
 
-Offline synthetic GMP parser/robots tests have passed locally (9 tests). GitHub Actions workflow is configured, but its latest execution status must be checked on GitHub. Live IPOWatch/Chittorgarh, Yahoo Finance and RSS integration tests have **not** passed in this environment because outbound DNS access is unavailable. Do not claim live data coverage without a successful network run and source-permission review.
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+python -m ruff check .
+python -m ruff format --check .
+# Manual opt-in, personal use only; no blocked GMP/exchange source requests:
+python scripts/verify_live.py --personal-use
+```
+
+CI runs offline tests on Python 3.10, 3.11, 3.12 and 3.13. Synthetic fixtures do
+not establish live provider compatibility. The previous unittest command still
+runs the original nine tests, but pytest is required for the full suite.
+
+## Troubleshooting
+
+- Empty GMP/IPO outputs are expected without permitted configuration/imports.
+- Check `data/logs/run_summary.json` for `failed`, `partial`, `empty_or_disabled`.
+- Robots 403/404/unavailable/malformed: fail closed; obtain clarification from the
+  source. This project deliberately does not interpret missing robots as permission.
+- Layout change: re-inspect permitted markup and update mappings/tests; do not
+  loosen selectors until arbitrary unrelated tables parse.
+- HTTP 429: honor Retry-After; reduce frequency. Yahoo rate limits stop that ticker.
+- No prices/DNS/TLS/network denial: collection remains unverified; there is no
+  synthetic-data fallback. Correct connectivity; do not evade access controls.
+- Missing indicator: retrieve a longer period. Missing dates are not forward-filled.
+- UTF-8 CSV: use your spreadsheet application's UTF-8 import option if needed.
+
+Contributions: [CONTRIBUTING.md](CONTRIBUTING.md). Changes:
+[CHANGELOG.md](CHANGELOG.md). Code license: [MIT](LICENSE).

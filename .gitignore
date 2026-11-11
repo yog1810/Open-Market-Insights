@@ -6,3 +6,10 @@ __pycache__/
 .DS_Store
 data/*
 !data/.gitkeep
+.coverage
+htmlcov/
+.ruff_cache/
+test-results.xml
+*.egg-info/
+dist/
+build/

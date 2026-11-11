@@ -1,80 +1,146 @@
-"""CLI entrypoint: python main.py --all"""
+"""Beginner CLI; isolated collectors with machine-readable run status."""
+
 from __future__ import annotations
+
 import argparse
 import json
 import logging
 from pathlib import Path
+
 import pandas as pd
-from scrapers.gmp_scraper import collect_gmp, GMPSource
-from scrapers.market_data import collect_market_data, DEFAULT_SYMBOLS
-from scrapers.news_insights import collect_news
+
+from scrapers.gmp import GMPSource, collect_gmp
+from scrapers.gmp.investorgain import SOURCE as INVESTORGAIN
+from scrapers.gmp.ipowatch import SOURCE as IPOWATCH
+from scrapers.ipo_metadata import collect_ipo
+from scrapers.market_data import DEFAULT_SYMBOLS, collect_market_data
+from scrapers.news_insights import FEEDS, collect_news
+from scrapers.storage import save
 
 LOG = logging.getLogger("open_market_insights")
 
 
-def save(df: pd.DataFrame, name: str, output: Path) -> None:
-    output.mkdir(parents=True, exist_ok=True)
-    csv_path = output / f"{name}.csv"
-    json_path = output / f"{name}.json"
-    df.to_csv(csv_path, index=False)
-    df.to_json(json_path, orient="records", indent=2, force_ascii=False)
-    LOG.info("%s: %s rows saved to %s and %s", name, len(df), csv_path, json_path)
-
-
-def _skip_news() -> pd.DataFrame:
-    LOG.warning("RSS disabled by default; review publisher terms and pass --acknowledge-rss-terms for permitted personal use")
-    return pd.DataFrame(columns=["publisher", "title", "url", "published", "retrieved_at_utc"])
-
-
 def load_gmp_config(path: Path) -> tuple[GMPSource, ...]:
-    """Load explicit, user-reviewed GMP page mappings; never guess selectors."""
     config = json.loads(path.read_text(encoding="utf-8"))
     sources = []
     for item in config["sources"]:
-        if not item.get("permission_reviewed", False):
-            LOG.warning("Skipping %s: permission_reviewed must be true", item.get("name"))
+        if item.get("permission_reviewed") is not True or not item.get("permission_reference"):
+            LOG.warning(
+                "source_disabled source=%s reason=permission_not_documented", item.get("name")
+            )
             continue
         if not item["url"].startswith("https://"):
             raise ValueError("GMP source URLs must use HTTPS")
-        sources.append(GMPSource(
-            name=item["name"], url=item["url"],
-            table_selector=item["table_selector"],
-            row_selector=item.get("row_selector", "tbody tr"),
-            name_cell=int(item["name_cell"]), gmp_cell=int(item["gmp_cell"])
-        ))
+        fields = set(GMPSource.__dataclass_fields__)
+        values = {k: v for k, v in item.items() if k in fields}
+        if "expected_headers" in values:
+            values["expected_headers"] = tuple(values["expected_headers"])
+        sources.append(GMPSource(**values))
     return tuple(sources)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Free Indian market data collector")
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Indian market research toolkit. No real-time quotes or advice."
+    )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("--all", action="store_true", help="Collect all categories (default)")
-    group.add_argument("--gmp", action="store_true", help="Collect configured GMP sources")
-    group.add_argument("--stocks", action="store_true", help="Collect stock/index history")
-    group.add_argument("--news", action="store_true", help="Collect RSS metadata")
+    for flag in ("all", "gmp", "stocks", "news", "ipo"):
+        group.add_argument("--" + flag, action="store_true")
     parser.add_argument("--symbols", nargs="+", default=list(DEFAULT_SYMBOLS))
-    parser.add_argument("--period", default="5d", help="Yahoo Finance history period")
-    parser.add_argument("--gmp-config", type=Path, help="JSON config with verified GMP source URLs and selectors")
+    parser.add_argument("--period", default="5d")
+    parser.add_argument("--source", help="GMP configured source name, or RSS publisher name")
+    parser.add_argument("--gmp-config", type=Path)
+    parser.add_argument(
+        "--ipo-file", type=Path, help="Lawfully obtained normalized CSV/JSON metadata"
+    )
     parser.add_argument("--output", type=Path, default=Path("data"))
     parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--acknowledge-rss-terms", action="store_true", help="Opt in to permitted personal, noncommercial RSS use")
-    args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-                        format="%(levelname)s %(name)s: %(message)s")
-    all_selected = args.all or not (args.gmp or args.stocks or args.news)
+    parser.add_argument("--snapshot", action="store_true")
+    parser.add_argument("--indicators", action="store_true")
+    parser.add_argument("--fallback-only", action="store_true")
+    parser.add_argument("--limit", type=int, default=30, help="Maximum news records per publisher")
+    parser.add_argument("--keywords", nargs="*", default=[])
+    parser.add_argument("--acknowledge-rss-terms", action="store_true")
+    args = parser.parse_args(argv)
+    if args.limit < 0:
+        parser.error("--limit must be >= 0")
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    selected = args.all or not any((args.gmp, args.stocks, args.news, args.ipo))
     tasks = []
-    if all_selected or args.gmp:
-        tasks.append(("gmp", lambda: collect_gmp(load_gmp_config(args.gmp_config)) if args.gmp_config else collect_gmp()))
-    if all_selected or args.stocks:
-        tasks.append(("market_data", lambda: collect_market_data(tuple(args.symbols), args.period)))
-    if all_selected or args.news:
-        tasks.append(("news", lambda: collect_news() if args.acknowledge_rss_terms else _skip_news()))
+    if selected or args.gmp:
+
+        def gmp():
+            sources = (
+                load_gmp_config(args.gmp_config) if args.gmp_config else (INVESTORGAIN, IPOWATCH)
+            )
+            if args.source:
+                sources = tuple(s for s in sources if s.name.casefold() == args.source.casefold())
+                if not sources:
+                    raise ValueError("Unknown GMP source; configure a permission-reviewed source")
+            return collect_gmp(sources, fallback_only=args.fallback_only)
+
+        tasks.append(("gmp", gmp))
+    if selected or args.stocks:
+        tasks.append(
+            (
+                "stocks",
+                lambda: collect_market_data(
+                    tuple(args.symbols), args.period, indicators=args.indicators
+                ),
+            )
+        )
+    if selected or args.news:
+
+        def news():
+            feeds = FEEDS
+            if args.source:
+                feeds = {k: v for k, v in FEEDS.items() if k.casefold() == args.source.casefold()}
+                if not feeds:
+                    raise ValueError("Unknown or disabled RSS publisher")
+            return collect_news(
+                feeds,
+                max_items=args.limit,
+                keywords=args.keywords,
+                permission_reviewed=args.acknowledge_rss_terms,
+            )
+
+        tasks.append(("news", news))
+    if selected or args.ipo:
+        tasks.append(("ipo", lambda: collect_ipo(args.ipo_file)))
+    summary, failed = [], False
     for name, task in tasks:
         try:
-            save(task(), name, args.output)
-        except Exception:
-            LOG.exception("Unexpected error in %s; continuing", name)
+            frame = task()
+            errors = frame.attrs.get("errors", [])
+            if name == "stocks":
+                mask = frame.symbol.str.startswith("^")
+                save(frame.loc[mask], "indices", args.output / "indices", args.snapshot)
+                save(frame.loc[~mask], "stocks", args.output / "stocks", args.snapshot)
+                # Preserve original combined output for existing consumers.
+                save(frame, "market_data", args.output, args.snapshot)
+            else:
+                save(frame, name, args.output / name, args.snapshot)
+                save(frame, name, args.output, args.snapshot)  # legacy paths
+            status = (
+                "partial"
+                if errors and len(frame)
+                else ("failed" if errors else ("ok" if len(frame) else "empty_or_disabled"))
+            )
+            summary.append(
+                dict(collector=name, status=status, rows=len(frame), errors="; ".join(errors))
+            )
+            failed |= bool(errors)
+            LOG.info("collector=%s status=%s rows=%s", name, status, len(frame))
+        except Exception as exc:
+            LOG.exception("collector_failed collector=%s", name)
+            summary.append(dict(collector=name, status="failed", rows=0, errors=str(exc)))
+            failed = True
+    save(pd.DataFrame(summary), "run_summary", args.output / "logs", args.snapshot)
+    return int(failed)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

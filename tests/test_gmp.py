@@ -1,8 +1,11 @@
 """Offline synthetic fixtures; no network access or third-party data."""
+
 import unittest
 from unittest.mock import Mock
+
 import requests
-from scrapers.gmp_scraper import GMPSource, parse_gmp_html, _money, _robots_allowed
+
+from scrapers.gmp_scraper import GMPSource, _money, _robots_allowed, parse_gmp_html
 
 
 class GMPTests(unittest.TestCase):

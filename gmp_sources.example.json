@@ -1,13 +1,18 @@
 {
   "sources": [
     {
-      "name": "Example only - replace",
+      "name": "authorized-provider",
       "url": "https://example.org/permitted-ipo-gmp",
       "permission_reviewed": false,
+      "permission_reference": "",
       "table_selector": "table.gmp",
       "row_selector": "tbody tr",
       "name_cell": 0,
-      "gmp_cell": 1
+      "gmp_cell": 1,
+      "issue_price_cell": 2,
+      "updated_cell": null,
+      "status_cell": null,
+      "expected_headers": ["company", "gmp", "issue price"]
     }
   ]
 }
