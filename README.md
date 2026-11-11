@@ -27,6 +27,7 @@ Or run `python main.py` (same default). RSS collection is disabled by default un
 python main.py --stocks --symbols RELIANCE.NS TCS.NS ^NSEI ^BSESN --period 1mo
 python main.py --news --acknowledge-rss-terms
 python main.py --gmp
+python main.py --gmp --gmp-config gmp_sources.example.json
 python main.py --all --output data --verbose --acknowledge-rss-terms
 python -m unittest discover -s tests -v
 ```
@@ -48,7 +49,7 @@ Use `.NS` for NSE, `.BO` for BSE, `^NSEI` for Nifty 50, and `^BSESN` for Sensex.
 
 1. Check Chittorgarh.com and IPOWatch.in terms, robots.txt, and whether automated collection and your intended reuse are allowed. Obtain permission when needed. Do not evade paywalls, CAPTCHAs, access restrictions, or rate limits.
 2. Find a current, permitted public GMP listing URL on each website; update `SOURCES` in `scrapers/gmp_scraper.py`.
-3. Inspect the page's HTML manually, identify the correct table/row selectors and IPO name/GMP column indices, then update the `GMPSource` configuration. Check for JavaScript-only pages, changed columns, and units.
+3. Copy `gmp_sources.example.json`, replace its placeholder URL and selectors, and set `permission_reviewed` to `true` **only after confirming permission**. Run `python main.py --gmp --gmp-config your_sources.json`. The example remains disabled by default. Inspect the page's HTML manually, identify the correct table/row selectors and IPO name/GMP column indices, then update the `GMPSource` configuration. Check for JavaScript-only pages, changed columns, and units.
 4. Run `python main.py --gmp`, inspect `data/gmp.csv`, and compare every parsed value with the source. Do not publish scraped data until accuracy and redistribution rights are confirmed.
 
 The collector checks robots.txt (fails closed when unavailable), uses a descriptive User-Agent, sleeps at least one second between configured sources, sets request timeouts and logs failures. Replace `set-your-email` in User-Agent with a real project contact before enabling scraping. Additional per-host crawl-delay and terms may require a longer interval; configure accordingly. `robots.txt` is **not** a substitute for site terms or permission.
@@ -74,3 +75,7 @@ Contributions: fork, create a feature branch, run `python -m unittest discover -
 ## Limitations and responsible use
 
 This is a starter toolkit, not a production trading feed or a claim of working live GMP coverage. Source markup and RSS endpoints can change; financial providers can rate-limit or block requests. Verify all data independently. Use a sensible schedule, avoid aggressive parallelism, follow each site's terms and licensing, and obtain independent legal/compliance advice for commercial use or redistribution. No SEBI/NSE/BSE affiliation or endorsement is claimed.
+
+## Test status
+
+Offline synthetic GMP parser/robots tests have passed locally (9 tests). GitHub Actions workflow is configured, but its latest execution status must be checked on GitHub. Live IPOWatch/Chittorgarh, Yahoo Finance and RSS integration tests have **not** passed in this environment because outbound DNS access is unavailable. Do not claim live data coverage without a successful network run and source-permission review.
