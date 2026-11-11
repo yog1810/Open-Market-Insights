@@ -19,19 +19,28 @@ pip install -r requirements.txt
 python main.py --all
 ```
 
-Or run `python main.py` (same default). Results appear in `data/` as CSV and JSON. `data/` output is ignored by Git.
+Or run `python main.py` (same default). RSS collection is disabled by default until the user explicitly acknowledges the publisher terms. Results appear in `data/` as CSV and JSON. `data/` output is ignored by Git.
 
 ## CLI
 
 ```bash
 python main.py --stocks --symbols RELIANCE.NS TCS.NS ^NSEI ^BSESN --period 1mo
-python main.py --news
+python main.py --news --acknowledge-rss-terms
 python main.py --gmp
-python main.py --all --output data --verbose
+python main.py --all --output data --verbose --acknowledge-rss-terms
 python -m unittest discover -s tests -v
 ```
 
 Use `.NS` for NSE, `.BO` for BSE, `^NSEI` for Nifty 50, and `^BSESN` for Sensex. The stock provider is the unofficial `yfinance` client, not an exchange feed.
+
+## Source review (12 November 2026)
+
+- IPOWatch public GMP page: https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/ — discovered, but automated access permission and HTML selectors are **not verified**.
+- Economic Times official RSS terms: https://economictimes.indiatimes.com/rss.cms — personal use only; aggregation/redistribution requires permission.
+- Mint official RSS terms: https://www.livemint.com/rss — personal, noncommercial newsreader use.
+- Business Standard RSS directory: https://www.business-standard.com/rss-feeds/listing — review terms and feed endpoints.
+- The RSS flag `--acknowledge-rss-terms` is an explicit opt-in for permitted personal use, **not** a license to redistribute publisher content.
+- No live network integration tests have been completed. Tests use synthetic fixtures.
 
 ## GMP setup (manual verification required)
 
