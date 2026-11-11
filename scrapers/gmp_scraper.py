@@ -52,11 +52,10 @@ def _robots_allowed(session: requests.Session, url: str, agent: str) -> bool:
 
 
 def _money(text: str) -> float | None:
-    """Return numeric GMP only for unambiguous currency-like strings."""
+    """Accept only a single INR numeric amount; reject ranges and commentary."""
     clean = text.strip().replace(",", "")
-    clean = re.sub(r"^(Rs\\.?\\s*|INR\\s*|₹\\s*)", "", clean, flags=re.I)
-    clean = re.sub(r"^([+-])\\s*(Rs\\.?\\s*|INR\\s*|₹\\s*)", r"\\1", clean, flags=re.I)
-    if re.fullmatch(r"[+-]?\d+(?:\.\d+)?", clean):
+    clean = clean.replace("₹", "").replace("Rs.", "").replace("Rs", "").replace("INR", "").strip()
+    if re.fullmatch(r"[+-]?[0-9]+(?:[.][0-9]+)?", clean):
         return float(clean)
     return None
 
