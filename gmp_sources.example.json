@@ -1,0 +1,13 @@
+{
+  "sources": [
+    {
+      "name": "Example only - replace",
+      "url": "https://example.org/permitted-ipo-gmp",
+      "permission_reviewed": false,
+      "table_selector": "table.gmp",
+      "row_selector": "tbody tr",
+      "name_cell": 0,
+      "gmp_cell": 1
+    }
+  ]
+}
