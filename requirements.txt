@@ -1,0 +1,6 @@
+requests>=2.32,<3
+beautifulsoup4>=4.12,<5
+lxml>=5,<7
+yfinance>=0.2.50,<2
+feedparser>=6,<7
+pandas>=2.2,<4
