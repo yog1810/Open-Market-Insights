@@ -17,7 +17,7 @@ import requests
 from bs4 import BeautifulSoup
 
 LOG = logging.getLogger(__name__)
-USER_AGENT = "open-market-insights/0.1 (+https://github.com/yog1810/Open-Market-Insights; research; contact: set-your-email)"
+USER_AGENT = "open-market-insights/0.1 (+https://github.com/yog1810/Open-Market-Insights; educational research)"
 
 
 @dataclass(frozen=True)
@@ -53,7 +53,9 @@ def _robots_allowed(session: requests.Session, url: str, agent: str) -> bool:
 
 def _money(text: str) -> float | None:
     """Return numeric GMP only for unambiguous currency-like strings."""
-    clean = text.replace(",", "").replace("₹", "").replace("Rs.", "").strip()
+    clean = text.strip().replace(",", "")
+    clean = re.sub(r"^(Rs\\.?\\s*|INR\\s*|₹\\s*)", "", clean, flags=re.I)
+    clean = re.sub(r"^([+-])\\s*(Rs\\.?\\s*|INR\\s*|₹\\s*)", r"\\1", clean, flags=re.I)
     if re.fullmatch(r"[+-]?\d+(?:\.\d+)?", clean):
         return float(clean)
     return None
