@@ -1,4 +1,4 @@
-"""Table adapter for explicitly permission-reviewed layouts; no guessed live selectors."""
+"""Explicit table layouts with independently configurable source availability."""
 
 from __future__ import annotations
 
@@ -26,6 +26,8 @@ COLUMNS = [
     "retrieved_at_utc",
     "status",
     "discrepancy",
+    "raw_issue_price",
+    "subscription_status",
 ]
 
 
@@ -47,6 +49,11 @@ class GMPSource:
     permission_reviewed: bool = False
     permission_reference: str = ""
     expected_headers: tuple[str, ...] = ()
+    enabled: bool = True
+    disabled_reason: str = ""
+
+    def parse(self, html: str, strict: bool = False) -> list[dict]:
+        return parse_gmp_html(html, self, strict=strict)
 
     def __post_init__(self):
         indices = (

@@ -6,7 +6,7 @@ import pandas as pd
 
 from scrapers.http import USER_AGENT, PoliteClient
 
-from .base import COLUMNS, GMPSource, parse_gmp_html
+from .base import COLUMNS, GMPSource
 
 LOG = logging.getLogger(__name__)
 
@@ -26,13 +26,15 @@ def collect_gmp(
     rows, errors = [], []
     try:
         for source in sources:
-            if source.permission_reviewed is not True or not source.permission_reference:
+            if not source.enabled:
                 LOG.warning(
-                    "source_disabled source=%s reason=permission_not_documented", source.name
+                    "source_disabled source=%s reason=%s",
+                    source.name,
+                    source.disabled_reason or "disabled_by_config",
                 )
                 continue
             try:
-                parsed = parse_gmp_html(client.get(source.url).text, source, strict=True)
+                parsed = source.parse(client.get(source.url).text, strict=True)
                 rows.extend(parsed)
                 if fallback_only and parsed:
                     break

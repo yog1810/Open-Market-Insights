@@ -8,6 +8,7 @@ undocumented exchange endpoint or login workaround is implemented by this toolki
 
 | Source | Data | Automated access / reuse assessment | Checked | Implementation | Limitations |
 | --- | --- | --- | --- | --- | --- |
+| IPOReports | Public unofficial GMP | Enabled for low-volume personal informational research; terms prohibit abusive scraping and substantial republication | 2026-11-12 | Live-tested first-page parser with exact headers | Source timestamps/status retained; some rows historical/listed; no redistribution license or full market coverage |
 | InvestorGain | Unofficial GMP | Disabled; written permission required under published IP restrictions | 2026-11-12 | Disabled source descriptor; synthetic-tested configurable table parser | Current GMP page discovered, live HTML/CSS not verified; robots endpoint unavailable to research tool |
 | IPOWatch | Unofficial GMP | Disabled; terms restrict downloading/copying/republication | 2026-11-12 | Disabled descriptor; no claimed live mapping | Listing tables visible in search rendering; live raw HTML/CSS and robots not verified; not collected |
 | Chittorgarh | IPO data; possible GMP | Disabled; robots blocked research access, permission unknown | 2026-11-12 | Explicit unavailable descriptor, no placeholder homepage scraping | No verified GMP listing URL or selectors; no live access attempted around block |
@@ -21,6 +22,11 @@ undocumented exchange endpoint or login workaround is implemented by this toolki
 | Moneycontrol | RSS candidate | Disabled; permission and current English feed not established | 2026-11-12 | Excluded from defaults | Terms page found; English RSS directory unavailable; Hindi directory discovered, not collected |
 
 ## Primary evidence
+
+- IPOReports public table: https://iporeports.in/
+- IPOReports terms: https://iporeports.in/terms-and-conditions/
+- IPOReports disclaimer: https://iporeports.in/disclaimer/
+
 
 - InvestorGain GMP listing: https://www.investorgain.com/report/ipo-gmp-live/331/
 - InvestorGain terms/IP restrictions: https://www.investorgain.com/article/disclaimer-and-privacy-statement/250/
@@ -46,8 +52,12 @@ undocumented exchange endpoint or login workaround is implemented by this toolki
 
 ## GMP HTML inspection and reliability limits
 
-No source met the permission standard for a live GMP extraction. Consequently,
-no live adapter is represented as verified. Search rendering of IPOWatch displayed
+The initial release had no live GMP extraction. This was superseded by the
+IPOReports adapter: its `#ipo-main-table` and 13-column header signature were
+inspected from actual server-rendered HTML, including the mixed amount/percentage
+GMP cell, name anchor, status badges and update column. The adapter stores only
+table observations, not article text. IPOReports allows personal informational
+research and prohibits abusive scraping; this is not a public redistribution license. Search rendering of IPOWatch displayed
 Company, GMP, Trend, Price Band, Est. Gain and Date columns across separate
 Mainboard/SME tables. That does not establish CSS selectors, server rendering,
 per-IPO update times or whether a displayed price is the final issue price.
@@ -64,11 +74,12 @@ is retained. Source update strings remain verbatim if their timezone/year is unk
 
 ## Enabling a source
 
-Obtain appropriate permission; record a non-secret reference in
-`permission_reference`; set `permission_reviewed` to JSON `true`; inspect the actual
-permitted HTML; supply precise selectors, numeric column mappings and headers.
-The list order defines priority. Runtime robots checks still apply. Explicit
-permission config is an attestation, not automatic proof of permission.
+Set `enabled: true` in a source config after inspecting its actual public layout.
+The software no longer requires `permission_reviewed` or a written-permission
+reference to collect GMP. Explicit site restrictions and runtime robots checks
+still apply. Use low-volume personal research; obtain broader rights separately
+for substantial republication or commercial redistribution. IPOReports performs
+one listing-page fetch per run, with no automatic pagination or scheduled polling.
 
 Default collection checks all enabled sources to retain discrepancies. Use
 `--fallback-only` to stop after the first source returning valid observations;

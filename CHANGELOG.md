@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 — 2026-11-12
+
+- Removed the blanket GMP written-permission attestation gate at the user's request;
+  source availability now uses an explicit `enabled` flag.
+- Added a live-tested IPOReports public-table adapter for personal research.
+- Preserved full raw GMP cells, source update/status, subscription text and price
+  bands; never infer a final issue price from a band or convert missing GMP to zero.
+- Kept robots, pacing, retry/access controls and explicit restricted-source disablement.
+- Added synthetic adapter tests and made CLI unit tests independent of live defaults.
+
 ## 0.2.0 — 2026-11-12
 
 - Added a modular, permission-gated GMP adapter system with priority/fallback,

@@ -82,7 +82,7 @@ def test_strict_missing_layout():
 
 def test_disabled_no_network():
     client = Mock()
-    assert collect_gmp([replace(SRC, permission_reviewed=False)], client=client).empty
+    assert collect_gmp([replace(SRC, enabled=False)], client=client).empty
     client.get.assert_not_called()
 
 
@@ -111,10 +111,10 @@ def test_priority_fallback_only():
     assert client.get.call_count == 1
 
 
-def test_configuration_requires_evidence(tmp_path):
+def test_configuration_needs_no_permission_attestation(tmp_path):
     path = tmp_path / "sources.json"
-    path.write_text('{"sources":[{"name":"x","permission_reviewed":true}]}')
-    assert load_gmp_config(path) == ()
+    path.write_text('{"sources":[{"name":"x","url":"https://example.org/gmp"}]}')
+    assert load_gmp_config(path)[0].enabled is True
 
 
 def test_invalid_column():

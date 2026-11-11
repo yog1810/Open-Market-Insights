@@ -1,6 +1,30 @@
 # Validation — 12 November 2026 (IST)
 
-## Executed local checks
+## Current GMP update (0.2.1)
+
+The blanket written-permission attestation gate was removed at the user's request.
+Explicit source enablement, robots, pacing, timeouts and access restrictions remain.
+IPOReports' public first-page table was inspected and its terms reviewed: personal
+informational research is allowed and abusive scraping is prohibited. Substantial
+republication/redistribution rights are not granted by this adapter.
+
+`python main.py --gmp` completed with exit code 0 and exported **15 GMP
+observations** to `data/gmp/gmp.csv` and `.json`, plus legacy paths. Source update
+strings, listed status, raw GMP/price-band cells and subscription text are retained.
+This is first-page coverage, not a claim that the observations are current or that
+all Mainboard/SME issues are covered. No price-band endpoint is substituted for a
+confirmed issue price, and no missing value is converted to zero.
+
+The updated offline suite completed in 2.37 seconds: **112 passed, 0 failed,
+0 skipped**, plus 6 unittest subtests passed. HTTP calls are guarded against
+accidental network requests; subprocess CLI tests supply an empty source config
+and collector-isolation tests mock the now-live default provider.
+
+The following sections record the earlier 0.2.0 checks and their historical
+limitations. The earlier statement that no live GMP adapter existed is superseded
+by this update.
+
+## Executed local checks (0.2.0)
 
 Runtime: Python 3.12. Dependencies installed in an isolated virtual environment.
 Notable installed versions: pandas 3.1.1, yfinance 1.8.0, requests 2.34.2,

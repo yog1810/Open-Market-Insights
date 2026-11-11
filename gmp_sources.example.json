@@ -12,7 +12,13 @@
       "issue_price_cell": 2,
       "updated_cell": null,
       "status_cell": null,
-      "expected_headers": ["company", "gmp", "issue price"]
+      "expected_headers": [
+        "company",
+        "gmp",
+        "issue price"
+      ],
+      "enabled": false,
+      "disabled_reason": "Example URL; replace with an actual public table"
     }
   ]
 }

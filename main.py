@@ -11,6 +11,7 @@ import pandas as pd
 
 from scrapers.gmp import GMPSource, collect_gmp
 from scrapers.gmp.investorgain import SOURCE as INVESTORGAIN
+from scrapers.gmp.iporeports import SOURCE as IPOREPORTS
 from scrapers.gmp.ipowatch import SOURCE as IPOWATCH
 from scrapers.ipo_metadata import collect_ipo
 from scrapers.market_data import DEFAULT_SYMBOLS, collect_market_data
@@ -24,11 +25,6 @@ def load_gmp_config(path: Path) -> tuple[GMPSource, ...]:
     config = json.loads(path.read_text(encoding="utf-8"))
     sources = []
     for item in config["sources"]:
-        if item.get("permission_reviewed") is not True or not item.get("permission_reference"):
-            LOG.warning(
-                "source_disabled source=%s reason=permission_not_documented", item.get("name")
-            )
-            continue
         if not item["url"].startswith("https://"):
             raise ValueError("GMP source URLs must use HTTPS")
         fields = set(GMPSource.__dataclass_fields__)
@@ -74,12 +70,14 @@ def main(argv=None) -> int:
 
         def gmp():
             sources = (
-                load_gmp_config(args.gmp_config) if args.gmp_config else (INVESTORGAIN, IPOWATCH)
+                load_gmp_config(args.gmp_config)
+                if args.gmp_config
+                else (IPOREPORTS, INVESTORGAIN, IPOWATCH)
             )
             if args.source:
                 sources = tuple(s for s in sources if s.name.casefold() == args.source.casefold())
                 if not sources:
-                    raise ValueError("Unknown GMP source; configure a permission-reviewed source")
+                    raise ValueError("Unknown GMP source; configure a public source")
             return collect_gmp(sources, fallback_only=args.fallback_only)
 
         tasks.append(("gmp", gmp))

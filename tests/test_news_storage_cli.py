@@ -89,15 +89,21 @@ def test_atomic_failure_keeps_previous_file(tmp_path):
 
 @pytest.mark.parametrize("flag", ["--gmp", "--ipo", "--news"])
 def test_cli_offline_subprocess(flag, tmp_path):
-    result = subprocess.run(
-        [sys.executable, "main.py", flag, "--output", str(tmp_path)], capture_output=True, text=True
-    )
+    config = tmp_path / "empty-sources.json"
+    config.write_text('{"sources":[]}')
+    args = [sys.executable, "main.py", flag, "--output", str(tmp_path)]
+    if flag == "--gmp":
+        args.extend(["--gmp-config", str(config)])
+    result = subprocess.run(args, capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "logs/run_summary.json").exists()
 
 
 def test_all_collectors_isolated(tmp_path):
-    with patch("main.collect_market_data", side_effect=RuntimeError("synthetic failure")):
+    with (
+        patch("main.collect_market_data", side_effect=RuntimeError("synthetic failure")),
+        patch("main.collect_gmp", return_value=pd.DataFrame()),
+    ):
         assert main(["--all", "--output", str(tmp_path)]) == 1
     summary = json.loads((tmp_path / "logs/run_summary.json").read_text())
     assert len(summary) == 4

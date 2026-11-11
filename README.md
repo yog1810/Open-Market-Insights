@@ -3,10 +3,12 @@
 Free, modular Indian market data toolkit for personal education and research.
 Python 3.10–3.13 target • MIT code license • CSV/JSON exports • Offline tests
 
-**This toolkit does not provide live GMP out of the box.** No reviewed GMP source
-has established permission for automated collection/reuse. Sources stay disabled
-rather than returning invented data. Yahoo historical prices are unofficial and
-may be delayed or revised. This project is not financial advice or an exchange feed.
+**GMP collection is enabled by default through IPOReports' public table.**
+Run `python main.py --gmp`. This fetches the first listing page for personal
+informational research, retains source update strings/status and skips unavailable
+values. Listed IPO observations may be old; a successful fetch does not make them
+current tradable quotes. Yahoo historical prices are unofficial and may be delayed
+or revised. This project is not financial advice or an exchange feed.
 
 ## Install
 
@@ -46,8 +48,8 @@ isolation. One collector failure does not stop the others. Exit code 1 means a
 collector/source failed or returned a partial result; 0 includes intentionally
 empty/disabled collectors. See `data/logs/run_summary.json` and stderr for details.
 An unknown `--source` fails explicitly. For GMP, this flag selects a configured
-provider; it does not override permissions. The default InvestorGain/IPOWatch
-entries are disabled; Chittorgarh has no verified listing adapter.
+provider; it does not override permissions. IPOReports is enabled. InvestorGain/IPOWatch
+entries remain explicitly disabled for published restrictions/unverified mappings; Chittorgarh has no verified listing adapter.
 
 RSS requires `--acknowledge-rss-terms` even at API level (`permission_reviewed=True`).
 Only ET is enabled after the runtime check; Mint's advertised feed returned 404 and is excluded from defaults. The flag grants
@@ -56,7 +58,7 @@ public news site. Business Standard/Moneycontrol are excluded from defaults.
 
 ## What is implemented
 
-- GMP adapters: explicit table/row/column mappings; permission evidence required;
+- GMP adapters: explicit table/row/column mappings and a verified IPOReports parser;
   configurable priority (config list order), fallback after errors, duplicate
   detection and retained disagreements. No averages or fabricated missing values.
 - HTTP: descriptive User-Agent, HTTPS, fail-closed robots checks, per-host pacing,
@@ -83,10 +85,12 @@ Cloudflare, restrictions or rate limits. No SEBI/NSE/BSE affiliation is claimed.
 
 ## Configuring an authorized GMP provider
 
-Copy `gmp_sources.example.json`; use only a permitted real listing page. Set
-`permission_reviewed: true` and `permission_reference` to documented permission,
-then map inspected selectors/columns. Example defaults are intentionally disabled.
-Do not turn on an adapter merely because a source is public. `expected_headers`
+Copy `gmp_sources.example.json`, replace its example URL and map inspected
+selectors/columns, then set `enabled: true`. Separate written-permission
+attestation is no longer required by the software. The legacy
+`permission_reviewed`/`permission_reference` fields are accepted as inert metadata
+for compatibility; they no longer decide whether GMP collection runs.
+Respect explicit restrictions, source terms, robots and rate limits. `expected_headers`
 contains the exact lower-case sequence of selected table headers for drift checking.
 Only map `issue_price_cell` when it means a confirmed single per-share issue price;
 price-band ranges are rejected. `updated_cell` remains raw without an invented year
@@ -98,7 +102,7 @@ Normalized GMP fields:
 ```text
 ipo_name, ipo_slug, gmp_inr, raw_gmp, issue_price, estimated_listing_price,
 estimate_basis, gmp_percentage, source, source_url, source_updated_at,
-retrieved_at_utc, status, discrepancy
+retrieved_at_utc, status, discrepancy, raw_issue_price, subscription_status
 ```
 
 `estimated_listing_price = issue_price + gmp_inr` is an unofficial calculation,
@@ -107,8 +111,12 @@ GMP is valid; missing, ranges and commentary are skipped/logged. All conflicting
 GMP observations remain present with `discrepancy=true`; comparisons are not a
 freshness guarantee. Names are candidate keys, not proof of company identity.
 
-The old `scrapers.gmp_scraper` imports remain supported. Direct collection now
-requires documented permissions too; this intentionally closes an unsafe API gap.
+The old `scrapers.gmp_scraper` imports remain supported. Sources use an explicit
+`enabled` flag; there is no blanket permission-uncertainty gate. IPOReports parses
+its GMP amount separately from its percentage and preserves the full raw cell.
+Its issue-price ranges are stored in `raw_issue_price`; no final issue price or
+derived listing estimate is guessed. Only the first page is collected, with
+no automatic pagination or scheduled polling.
 
 ## IPO import schema
 
@@ -156,7 +164,8 @@ runs the original nine tests, but pytest is required for the full suite.
 
 ## Troubleshooting
 
-- Empty GMP/IPO outputs are expected without permitted configuration/imports.
+- Empty IPO output is expected without a local import. Empty GMP output means no
+  valid records were found, collection failed, or configured sources are disabled.
 - Check `data/logs/run_summary.json` for `failed`, `partial`, `empty_or_disabled`.
 - Robots 403/404/unavailable/malformed: fail closed; obtain clarification from the
   source. This project deliberately does not interpret missing robots as permission.
