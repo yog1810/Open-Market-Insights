@@ -94,6 +94,10 @@ def test_cli_offline_subprocess(flag, tmp_path):
     args = [sys.executable, "main.py", flag, "--output", str(tmp_path)]
     if flag == "--gmp":
         args.extend(["--gmp-config", str(config)])
+    if flag == "--ipo":
+        source = tmp_path / "empty-ipo.csv"
+        source.write_text("ipo_name,exchange,source_url\n")
+        args.extend(["--ipo-file", str(source)])
     result = subprocess.run(args, capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "logs/run_summary.json").exists()
@@ -103,12 +107,13 @@ def test_all_collectors_isolated(tmp_path):
     with (
         patch("main.collect_market_data", side_effect=RuntimeError("synthetic failure")),
         patch("main.collect_gmp", return_value=pd.DataFrame()),
+        patch("main.collect_ipo_market", side_effect=RuntimeError("synthetic IPO failure")),
     ):
         assert main(["--all", "--output", str(tmp_path)]) == 1
     summary = json.loads((tmp_path / "logs/run_summary.json").read_text())
     assert len(summary) == 4
     assert next(x for x in summary if x["collector"] == "stocks")["status"] == "failed"
-    assert (tmp_path / "ipo/ipo.json").exists()
+    assert next(x for x in summary if x["collector"] == "ipo")["status"] == "failed"
 
 
 def test_unknown_source_fails(tmp_path):

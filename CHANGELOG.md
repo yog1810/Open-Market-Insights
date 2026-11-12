@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-11-12
+
+- Added documented Xflot public IPO API collection as the default `--ipo` path.
+- Added IPO registry, calendar, subscription totals and SQLite observation history.
+- Retained ambiguous provider variants with explicit conflict flags and separate exports.
+- Preserved API attribution/disclaimer and left unknown quote timestamps missing.
+- Retained normalized local CSV/JSON import via `--ipo-file`.
+
 ## 0.2.1 — 2026-11-12
 
 - Removed the blanket GMP written-permission attestation gate at the user's request;

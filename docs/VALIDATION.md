@@ -1,5 +1,22 @@
 # Validation — 12 November 2026 (IST)
 
+## IPO registry extension (0.3.0)
+
+- Full offline suite: **136 passed, 0 failed, 0 skipped**, plus 6 passed subtests.
+- Lint, formatting and diff whitespace checks passed.
+- `python main.py --ipo` fetched the documented Xflot endpoint successfully and
+  wrote registry, calendar and subscription files with the original disclaimer.
+- Actual bulk response: 183 rows. Inspecting duplicate slugs revealed conflicting
+  dates/statuses, so the parser was improved to retain variants. Reprocessing the
+  **same fetched response with its original retrieval timestamp** produced 121
+  IPO-only preferred records, 32 conflict groups, 67 retained conflict observations,
+  27 excluded non-IPO/withdrawn rows and 305 calendar events. This reprocessing was not presented as a new live fetch.
+- SQLite preserves earlier snapshots alongside the current IPO-only observations. The earlier three-key prototype is retained
+  and migrated into a variant-aware history table without deleting old snapshots.
+- The sampled per-issue endpoint returned empty GMP and category-subscription
+  arrays. No financial statement fields were supplied. Those data remain absent.
+- No provider dataset is committed to GitHub.
+
 ## Current GMP update (0.2.1)
 
 The blanket written-permission attestation gate was removed at the user's request.

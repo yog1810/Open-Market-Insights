@@ -9,6 +9,7 @@ undocumented exchange endpoint or login workaround is implemented by this toolki
 | Source | Data | Automated access / reuse assessment | Checked | Implementation | Limitations |
 | --- | --- | --- | --- | --- | --- |
 | IPOReports | Public unofficial GMP | Enabled for low-volume personal informational research; terms prohibit abusive scraping and substantial republication | 2026-11-12 | Live-tested first-page parser with exact headers | Source timestamps/status retained; some rows historical/listed; no redistribution license or full market coverage |
+| Xflot public API | IPO registry, calendar dates, bands, lots, subscription totals and listing metadata | Documented public API: attribution, response disclaimer, no more than one poll/minute | 2026-11-12 | Live-tested; 183 returned rows, 121 IPO-only preferred records, all variants retained | 32 IPO slugs had conflicting variants; 27 non-IPO/withdrawn rows excluded; quote/subscription observation timestamps and financial statements unavailable |
 | InvestorGain | Unofficial GMP | Disabled; written permission required under published IP restrictions | 2026-11-12 | Disabled source descriptor; synthetic-tested configurable table parser | Current GMP page discovered, live HTML/CSS not verified; robots endpoint unavailable to research tool |
 | IPOWatch | Unofficial GMP | Disabled; terms restrict downloading/copying/republication | 2026-11-12 | Disabled descriptor; no claimed live mapping | Listing tables visible in search rendering; live raw HTML/CSS and robots not verified; not collected |
 | Chittorgarh | IPO data; possible GMP | Disabled; robots blocked research access, permission unknown | 2026-11-12 | Explicit unavailable descriptor, no placeholder homepage scraping | No verified GMP listing URL or selectors; no live access attempted around block |
@@ -93,3 +94,15 @@ not evidence of issuer identity or that observations refer to the same date.
 The runtime checks and exact results are recorded in `docs/VALIDATION.md`. Source
 policy research above succeeded through web research even when direct runtime
 network access fails. These are separate claims. Blocked sources were not probed.
+
+## Xflot registry extension
+
+Documentation and published API conditions: https://www.xflot.com/api-docs
+
+Bulk endpoint: https://www.xflot.com/api/public/market/ipos?limit=200
+
+The public API supplies information for reuse with attribution and its disclaimer.
+It does not make GMP official or guarantee accuracy. A sampled documented
+per-issue endpoint returned no GMP history or category-wise subscription rows.
+The database export preserves conflicting provider variants rather than silently
+choosing them as independently verified issue terms.

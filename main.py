@@ -13,9 +13,11 @@ from scrapers.gmp import GMPSource, collect_gmp
 from scrapers.gmp.investorgain import SOURCE as INVESTORGAIN
 from scrapers.gmp.iporeports import SOURCE as IPOREPORTS
 from scrapers.gmp.ipowatch import SOURCE as IPOWATCH
+from scrapers.ipo_market import collect_ipo_market, ipo_calendar
 from scrapers.ipo_metadata import collect_ipo
 from scrapers.market_data import DEFAULT_SYMBOLS, collect_market_data
 from scrapers.news_insights import FEEDS, collect_news
+from scrapers.registry import update_registry
 from scrapers.storage import save
 
 LOG = logging.getLogger("open_market_insights")
@@ -107,12 +109,54 @@ def main(argv=None) -> int:
 
         tasks.append(("news", news))
     if selected or args.ipo:
-        tasks.append(("ipo", lambda: collect_ipo(args.ipo_file)))
+        tasks.append(
+            ("ipo", lambda: collect_ipo(args.ipo_file) if args.ipo_file else collect_ipo_market())
+        )
     summary, failed = [], False
     for name, task in tasks:
         try:
             frame = task()
             errors = frame.attrs.get("errors", [])
+            if name == "ipo" and not args.ipo_file:
+                save(ipo_calendar(frame), "calendar", args.output / "ipo", args.snapshot)
+                excluded = frame.attrs.get("excluded_records", [])
+                save(
+                    pd.DataFrame(
+                        excluded,
+                        columns=[
+                            "ipo_name",
+                            "provider_slug",
+                            "reason",
+                            "source_url",
+                            "disclaimer",
+                            "retrieved_at_utc",
+                        ],
+                    ),
+                    "excluded_records",
+                    args.output / "ipo",
+                    args.snapshot,
+                )
+                conflicts = frame.attrs.get("conflicting_observations", [])
+                save(
+                    pd.DataFrame(conflicts, columns=frame.columns),
+                    "ipo_conflicts",
+                    args.output / "ipo",
+                    args.snapshot,
+                )
+                update_registry(frame, args.output / "ipo" / "ipo_registry.sqlite")
+                subscription_columns = [
+                    "ipo_name",
+                    "provider_slug",
+                    "subscription_total",
+                    "subscription_observed_at",
+                    "source_updated_at",
+                    "source_url",
+                    "retrieved_at_utc",
+                    "disclaimer",
+                ]
+                save(
+                    frame[subscription_columns], "subscriptions", args.output / "ipo", args.snapshot
+                )
             if name == "stocks":
                 mask = frame.symbol.str.startswith("^")
                 save(frame.loc[mask], "indices", args.output / "indices", args.snapshot)

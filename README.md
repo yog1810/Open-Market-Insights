@@ -40,6 +40,7 @@ python main.py --gmp --gmp-config gmp_sources.example.json
 python main.py --stocks --symbols RELIANCE.NS TCS.NS INFY.NS RELIANCE.BO ^NSEI ^BSESN --period 1mo
 python main.py --stocks --period 3mo --indicators --snapshot
 python main.py --news --acknowledge-rss-terms --source "Economic Times" --keywords IPO Nifty --limit 10
+python main.py --ipo
 python main.py --ipo --ipo-file authorized_ipo_metadata.csv
 ```
 
@@ -72,6 +73,8 @@ public news site. Business Standard/Moneycontrol are excluded from defaults.
   IPO detection, UTC publication times; no full articles or descriptions exported.
 - IPO metadata: validated CSV/JSON import of lawfully obtained normalized records.
   No NSE website scraper (terms prohibit it), no unverified BSE API.
+  With no `--ipo-file`, `--ipo` now collects the documented Xflot public IPO API,
+  exports an IPO registry/calendar/subscription totals, and keeps SQLite history.
 - Storage: consistent empty schemas, UTF-8, null JSON values, duplicate removal,
   atomic replacement per file, optional UTC snapshots and run summaries.
 
@@ -117,6 +120,32 @@ its GMP amount separately from its percentage and preserves the full raw cell.
 Its issue-price ranges are stored in `raw_issue_price`; no final issue price or
 derived listing estimate is guessed. Only the first page is collected, with
 no automatic pagination or scheduled polling.
+
+## IPO registry and calendar
+
+`python main.py --ipo` uses https://www.xflot.com/api-docs, carries its original
+response disclaimer and source link, and uses a 60-second per-host interval.
+It is third-party reported data, not an official NSE/BSE feed. The response limit
+is 200; completeness of the entire IPO market is not claimed.
+
+Outputs under `data/ipo/`: `ipo.csv/json`, `calendar.csv/json`,
+`subscriptions.csv/json`, `ipo_conflicts.csv/json`, `excluded_records.csv/json`, and `ipo_registry.sqlite`.
+The registry preserves observation history and provider variants transactionally.
+NCD/ZCZP/FPO/social enterprise and explicitly withdrawn/postponed issues are
+excluded from the IPO view, with an exclusion report rather than invented statuses.
+When repeated provider slugs disagree, the current view picks the most complete
+record (then latest provider update), marks it `record_conflicted`, and preserves
+**all** conflicting observations separately and in SQLite. A preferred row is not
+proof of which variant is correct. Calendar events inherit the conflict flag.
+Do not automatically promote conflicted provider records into editorial pages.
+
+Dates, lot sizes, issue sizes (explicitly crore), price bands, listing observations,
+sector and registrar metadata remain nullable. `source_updated_at` is a record
+update; the bulk API does not establish GMP or subscription observation times.
+Those separate timestamps remain null. Never substitute fetch time for quote time.
+The current endpoint's per-issue detail was checked too: the sampled issue
+returned empty GMP history/category subscription arrays, so no category figures
+were invented. Company financial statements are not supplied by this endpoint.
 
 ## IPO import schema
 
